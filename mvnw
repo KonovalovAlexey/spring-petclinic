@@ -73,7 +73,7 @@ if [ -z "$JAVA_HOME" ] ; then
   if [ -r /etc/gentoo-release ] ; then
     JAVA_HOME=$(java-config --jre-home)
   fi
-fi
+fim
 
 # For Cygwin, ensure paths are in UNIX format before anything is touched
 if $cygwin ; then

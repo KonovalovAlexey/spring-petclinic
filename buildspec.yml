@@ -1,0 +1,27 @@
+version: 0.2
+env:
+  variables:
+    REPO_NAME: ""
+    PROJECT: ""
+    ART_REPO_ID: ""
+    DOMAIN: ""
+    BUCKET: ""
+
+phases:
+
+  build:
+    commands:
+        - mvn -s ./.m2/settings.xml clean package
+
+  post_build:
+    commands:
+        - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh ./target
+        - cd ./target
+        - bash pack_to_deb.sh spring-petclinic-3.2.0.jar 3.2.0 petclinic java
+
+artifacts:
+  files:
+    - 'scripts/*'
+    - '*.yml'
+    - 'target/petclinic.deb'
+  discard-paths: yes

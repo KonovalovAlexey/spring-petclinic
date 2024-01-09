@@ -1,0 +1,62 @@
+version: 0.2
+env:
+  parameter-store:
+    LOGIN: "$SONAR_TOKEN"
+    RP_TOKEN: "$RP_TOKEN_NAME"
+  variables:
+    REPO_NAME: ""
+    PROJECT_KEY: ""
+    SONAR_URL: ""
+    ORGANIZATION: ""
+    CODEBUILD_RESOLVED_SOURCE_VERSION: ""
+    QG_TIMEOUT: "300"
+    RP_ENDPOINT: ""
+    RP_PROJECT: ""
+    RP_LAUNCH_NAME: "GOAPP SONAR PR TEST"
+
+phases:
+  install:
+    commands:
+      # Add commands to install dependencies for your specific application language
+      # For example, if your project is in Python, you can use the following command to install necessary packages:
+      # - python -m pip install -r requirements.txt
+      - pip install -r requirements.txt
+      - APP_DIR="/opt/${REPO_NAME}"
+      - mkdir -p "${APP_DIR}"
+      - ln -s "${CODEBUILD_SRC_DIR}" "${APP_DIR}"
+      - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+      - apt-get update > /dev/null
+      - apt-get install -y jq > /dev/null
+      - python -m pip install -q reportportal-client==5.2.5
+      - export SONAR_SCANNER_VERSION=5.0.1.3006
+      - export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
+      - curl --create-dirs -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
+      - unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+      - export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+      - export SONAR_SCANNER_OPTS="-server"
+  build:
+    commands:
+      - cd "${APP_DIR}"
+      - export PULL_NUM=$(printf $CODEBUILD_WEBHOOK_TRIGGER | awk 'BEGIN{FS="/"} {print $2}')
+      - export BASE_REF=$(printf $CODEBUILD_WEBHOOK_BASE_REF | awk 'BEGIN{FS="/"} {print $3}')
+      - |
+          sonar-scanner \
+           -Dsonar.qualitygate.wait="true" \
+           -Dsonar.qualitygate.timeout=${QG_TIMEOUT} \
+           -Dsonar.pullrequest.provider=${PR_PROVIDER} \
+           -Dsonar.scm.revision=${CODEBUILD_RESOLVED_SOURCE_VERSION} \
+           -Dsonar.organization=${ORGANIZATION} \
+           -Dsonar.projectKey="${PROJECT_KEY}" \
+           -Dsonar.login=${LOGIN} \
+           -Dsonar.host.url=${SONAR_URL} \
+           -Dsonar.pullrequest.base=${BASE_REF} \
+           -Dsonar.pullrequest.branch=${CODEBUILD_WEBHOOK_HEAD_REF} \
+           -Dsonar.pullrequest.key=${PULL_NUM} \
+           -Dsonar.pullrequest.github.repository=${ORGANIZATION}/${REPO_NAME}
+      - API_URL="${SONAR_URL}/api/qualitygates/project_status?projectKey=${PROJECT_KEY}"
+      - curl -s -u "${LOGIN}:" ${API_URL} > result.json
+      - cat result.json | json_pp
+  post_build:
+    commands:
+      - if [ $CODEBUILD_BUILD_SUCCEEDING = 0 ] && [ $AI_HANDLER = 1 ]; then python ${CODEBUILD_SRC_DIR}/sonar_handler.py; fi
+      - python ${CODEBUILD_SRC_DIR}/scripts/sonar_report.py

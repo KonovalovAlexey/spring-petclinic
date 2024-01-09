@@ -1,0 +1,182 @@
+### Configuration file for the GitLab CI/CD pipeline.
+### The file is only intended to work with the GitLab repository for application.
+
+stages:
+  - sonar_MR
+  - mirror
+  - tag
+
+variables:
+## Check if all variables are set as pipeline variables in GitLab (Settings>CI/CD>Variables).
+  APP_LANGUAGE: ""
+  SONAR_LOGIN: ""
+  SONAR_HOST_URL: ""
+  SONAR_PROJECT_KEY: ""
+  SONAR_PROJECT_NAME: ""
+  SONAR_ORGANIZATION_NAME: ""
+  SONAR_QG_TIMEOUT: ""
+## You need a technical user on AWS with an SSH key for AWS CodeCommit.
+## More details at the link (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_ssh-keys.html).
+  CODECOMMIT_USER_NAME: ""
+  CODECOMMIT_SSH_KEY: ""
+  CODECOMMIT_REPO_URL: ""
+  VAR_COMMAND: ""
+  MIRROR_IMG: "ubuntu:22.04"
+
+.sonar_MR:
+  stage: sonar_MR
+  image: ${IMG}
+  allow_failure: true
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+     - .sonar/cache
+
+  script:
+## Initializing variable parameter values for running merge requests.
+    - COMMAND_ARGS="""-Dsonar.qualitygate.wait='true'
+                      -Dsonar.qualitygate.timeout=${SONAR_QG_TIMEOUT}
+                      -Dsonar.projectKey=${SONAR_PROJECT_KEY}
+                      -Dsonar.projectName=${SONAR_PROJECT_NAME}
+                      -Dsonar.login=${SONAR_LOGIN}
+                      -Dsonar.host.url=${SONAR_HOST_URL}
+                      -Dsonar.organization=${SONAR_ORGANIZATION_NAME}
+                      -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+                      -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
+                      -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID}"""
+    - echo ${COMMAND_ARGS} 
+## URL correction for EPAM GitLab.
+    - |
+        if [ "${SONAR_HOST_URL}" == "https://sonar.epam.com" ]
+        then
+        SONAR_URL=${SONAR_HOST_URL}/sonarqube
+        else
+        SONAR_URL=${SONAR_HOST_URL}
+        fi
+
+## Running Merge Request Analyzes.
+    - |
+       if [ "${APP_LANGUAGE}" == "java" ]
+       then
+       apt update -y && apt install -y jq && mvn verify sonar:sonar -Dcheckstyle.skip=true $COMMAND_ARGS #2> /dev/null
+       else
+       apk update && apk add jq && sonar-scanner $COMMAND_ARGS #2> /dev/null
+       fi
+
+## Get value for quality gates.
+    - API_URL="${SONAR_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}"
+    - curl -s -u "${SONAR_LOGIN}:" ${API_URL} > result.json
+    - cat result.json | jq
+
+sonar_MR:maven_app:
+  variables:
+    IMG: "maven:3.8.6-jdk-11"
+  extends:
+     .sonar_MR
+  rules:
+   - if: "$APP_LANGUAGE == 'java' && $CI_PIPELINE_SOURCE == 'merge_request_event'"
+
+sonar_MR:other_app:
+   variables:
+    IMG: "sonarsource/sonar-scanner-cli:4.7"
+   extends:
+     .sonar_MR
+   rules:
+     - if: "$APP_LANGUAGE != 'java' && $CI_PIPELINE_SOURCE == 'merge_request_event'"
+
+mirror:
+  stage: mirror
+  image: $MIRROR_IMG
+  rules:
+   - if: $CI_COMMIT_TAG 
+  # only:
+  #   refs:
+  #     - master
+  #     - develop
+  #     - main
+  allow_failure: true
+  before_script:
+      ## Install ssh-agent if not already installed.
+      - 'command -v ssh-agent >/dev/null || ( apt-get update -y >/dev/null && apt-get install openssh-client git -y >/dev/null )'
+      
+      ## Run ssh-agent (inside the build environment).
+      - eval $(ssh-agent -s)
+
+      ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store.
+      - cat $CODECOMMIT_SSH_KEY | tr -d '\r' | ssh-add -
+
+      ## Create the SSH directory and give it the right permissions.
+      - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+
+      ## Add connection information to the configuration file
+      - CODECOMMIT_HOST=$(echo ${CODECOMMIT_REPO_URL} | awk -F'[/:]' '{print $4}')
+      - echo "Host ${CODECOMMIT_HOST}" >> ~/.ssh/config
+      - echo "User ${CODECOMMIT_USER_NAME}" >> ~/.ssh/config
+      - chmod 600 ~/.ssh/config
+
+      ## Use ssh-keyscan to scan the keys of your private server.
+      - ssh-keyscan ${CODECOMMIT_HOST} >> ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+
+  script:
+      ## Add current remote repository.
+      - echo "Adding CodeCommit remote (${CODECOMMIT_REPO_URL})"
+      - git remote add codecommit ${CODECOMMIT_REPO_URL}
+
+      ## Push with the force flag to the appropriate remote branch in CodeCommit.
+      - echo $CI_COMMIT_TAG
+      - echo $CI_DEFAULT_BRANCH
+      - git push --force codecommit HEAD:refs/heads/${CI_DEFAULT_BRANCH}
+      - git push --tags codecommit
+      # - git push --delete codecommit v.5 1 v0.0.10
+tag:
+  stage: tag
+  variables:
+    VERSION_FILE: "version.txt"
+    INITIAL_VERSION: "v1.0.1"
+  only:
+    - master
+  before_script:
+      - 'command -v ssh-agent >/dev/null || ( apt-get update -y >/dev/null && apt-get install openssh-client git -y >/dev/null )'
+      ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
+      - mkdir -p ~/.ssh
+      - chmod 700 ~/.ssh
+      - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+      - ssh-keyscan "git.epam.com" >> ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+      - chmod 600 ~/.ssh/id_rsa
+      - eval "$(ssh-agent -s)"
+      - ssh-add ~/.ssh/id_rsa
+      ## Set up the Git config
+      - git config --global user.email "kateryna_kotova@epam.com"
+      - git config --global user.name "CI/CD job tag"
+      - git remote remove origin
+      - git remote add origin git@git.epam.com:epmc-acm/aws-cicd/javaapp.git
+  script:
+    - | 
+        if [ -f $VERSION_FILE ]; then # Check if version.txt file exists
+          PRIVIOUS_VERSION=$(cat $VERSION_FILE) # If file exists, read the latest tag from it
+          # Check if the tag is in semver format
+          if ! echo "$PRIVIOUS_VERSION" | egrep -q "^v[0-9]+\.[0-9]+\.[0-9]+$"; then
+              echo "Error: git tag $PRIVIOUS_VERSION in $VERSION_FILE doesn't match semver format vX.Y.Z"
+              exit 1
+          fi
+           # Increment the version number and create the tag NEW_VERSION
+          NEW_VERSION=$(echo "$PRIVIOUS_VERSION" | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+        else
+          # If the file doesn't exist, create it with v1.0.1 as the default tag
+          NEW_VERSION=INITIAL_VERSION
+        fi
+    - echo $NEW_VERSION
+    # Update version.txt file with the new tag
+    - echo $NEW_VERSION > $VERSION_FILE
+    - git add $VERSION_FILE
+    - git commit -m "skip-ci $NEW_VERSION"
+    # create a new Git tag with the name stored in the 'tag' variable
+    - git tag "$NEW_VERSION"
+    - git push origin $NEW_VERSION # push the new tag to the Gitlab repository
+    - git push origin HEAD:master
+  except:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /skip-ci/

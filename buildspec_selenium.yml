@@ -1,0 +1,33 @@
+version: 0.2
+env:
+  parameter-store:
+    RP_UUID: "$RP_TOKEN_NAME"
+  variables:
+    SELENIUM_SERVER_URL: http://127.0.0.1:4444/wd/hub
+    PASS_RATE: 100
+    APP_TARGET_URL: ""
+
+phases:
+  pre_build:
+    commands:
+      - docker run -d -p 4444:4444 -v /dev/shm:/dev/shm --name selenium selenium/standalone-firefox:3.141.59  > /dev/null
+      - pip install selenium unittest-xml-reporting junitparser  > /dev/null
+      - pip install pytest pytest-reportportal reportportal-client
+  build:
+    commands:
+      - |
+        python -m pytest --junitxml=report.xml ./selenium_tests/tests.py --reportportal 
+        python ./selenium_tests/selenium_report.py \
+          --report ./report.xml \
+          --pass-rate "${PASS_RATE}"
+#          python -m pytest --junitxml=report.xml ./scripts/selenium_tests/tests.py --reportportal
+#          python ./scripts/selenium_tests/selenium_report.py \
+# #         python -m pytest --junitxml=report.xml selenium_tests/tests.py --reportportal 
+# #         python selenium_tests/selenium_report.py \
+#            --report ./report.xml \
+#            --pass-rate "${PASS_RATE}"
+reports:
+  Selenium:
+    file-format: JunitXml
+    files:
+      - ./report.xml

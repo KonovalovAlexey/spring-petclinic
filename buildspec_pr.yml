@@ -1,0 +1,71 @@
+version: 0.2
+env:
+  parameter-store:
+    SONAR_TOKEN: "$SONAR_TOKEN_NAME"
+    RP_API_KEY: "$RP_TOKEN_NAME"
+    OPENAI_TOKEN: "$OPENAI_TOKEN_NAME"
+    GITHUB_TOKEN: "$GITHUB_TOKEN_NAME"
+  variables:
+    REPO_NAME: ""
+    PROJECT_KEY: ""
+    SONAR_URL: ""
+    ORGANIZATION: ""
+    CODEBUILD_RESOLVED_SOURCE_VERSION: ""
+    QG_TIMEOUT: "300"
+    SONAR_SCANNER_VERSION: "5.0.1.3006"
+    LLM_MODEL: ""
+    OPENAI_API_ENDPOINT: ""
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto11
+    commands:
+        - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+        - apt-get update
+        - apt-get install -y jq
+        - wget https://www-eu.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz
+        - tar xzf apache-maven-3.5.4-bin.tar.gz
+        - ln -s apache-maven-3.5.4 maven
+        - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.3.0.1492-linux.zip
+        - unzip ./sonar-scanner-cli-3.3.0.1492-linux.zip
+        - export PATH=$PATH:/sonar-scanner-3.3.0.1492-linux/bin/
+
+  pre_build:
+    commands:
+      # Add commands to install dependencies for your specific application language
+      - pip install -r scripts/ai/requirements.txt -qq
+      - APP_DIR="/opt/${REPO_NAME}"
+      - mkdir -p "${APP_DIR}"
+      - ln -s "${CODEBUILD_SRC_DIR}" "${APP_DIR}"
+      - curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/yarn-archive-keyring.gpg > /dev/null
+      - curl -fsSL https://apt.corretto.aws/corretto.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/corretto-archive-keyring.gpg > /dev/null
+      - apt-get update -qq
+      - export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
+      - curl --create-dirs -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
+      - unzip -qq -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+      - export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+      - export SONAR_SCANNER_OPTS="-server"
+
+  build:
+    commands:
+#        - mvn -s ./.m2/settings.xml package
+        - export PULL_NUM=$(echo $CODEBUILD_WEBHOOK_TRIGGER | awk 'BEGIN{FS="/"} {print $2}')
+        - export BASE_REF=$(echo $CODEBUILD_WEBHOOK_BASE_REF | awk 'BEGIN{FS="/"} {print $3}')
+        - |
+            mvn -s ./.m2/settings.xml sonar:sonar \
+             -Dsonar.qualitygate.wait="true" \
+             -Dsonar.qualitygate.timeout=${QG_TIMEOUT} \
+             -Dsonar.pullrequest.provider=${PR_PROVIDER} \
+             -Dsonar.scm.revision=${CODEBUILD_RESOLVED_SOURCE_VERSION} \
+             -Dsonar.organization=${ORGANIZATION} \
+             -Dsonar.projectKey="${PROJECT}-${REPO_NAME}" \
+             -Dsonar.login=${LOGIN} \
+             -Dsonar.host.url="https://sonarcloud.io" \
+             -Dsonar.pullrequest.base=${BASE_REF} \
+             -Dsonar.pullrequest.branch=${CODEBUILD_WEBHOOK_HEAD_REF} \
+             -Dsonar.pullrequest.key=${PULL_NUM} \
+             -Dsonar.pullrequest.github.repository="${ORGANIZATION}/${REPO_NAME}"  > /dev/null
+        - API_URL="https://sonarcloud.io/api/qualitygates/project_status?projectKey=${PROJECT}-${REPO_NAME}"
+        - curl -s -u "${LOGIN}:" ${API_URL} > result.json
+        - cat result.json | json_pp

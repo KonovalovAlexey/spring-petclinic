@@ -1,0 +1,58 @@
+version: 0.2
+env:
+  variables:
+    AWS_ACCOUNT_ID: ""
+    IMAGE_REPO_NAME: "" 
+    ART_REPO_ID: ""
+    DOMAIN: ""
+    BUCKET: ""
+    FAIL_ON_CRITICAL: "no"  # Set to "yes" to fail the pipeline when critical vulnerabilities are found
+
+
+phases:
+  pre_build:
+    commands:
+      - printenv # print all env variables
+      - echo "Using tag $new_tag for scanning"
+      - echo "Installing Trivy..."
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - echo "Creating directory for Trivy HTML template..."
+      - mkdir -p /usr/local/share/trivy/templates
+      - echo "Downloading Trivy HTML template..."
+      - curl -sSL -o /usr/local/share/trivy/templates/html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - echo "Retrieving the new tag from imageDetail.json..."
+      - new_tag=$(jq -r '.ImageURI' imageDetail.json | cut -d ':' -f 2)
+      - echo "Using tag $new_tag for scanning"
+      - echo "Pulling Docker image..."
+      - docker pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$new_tag   #<DOCKER_IMAGE_NAME>:latest
+  build:
+    commands:
+      - echo "Scanning Docker image with Trivy..."
+      - trivy image --ignorefile .trivyignore --severity CRITICAL --output /tmp/trivy-report.json $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$new_tag
+      - trivy image --ignorefile .trivyignore --severity CRITICAL --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output /tmp/trivy-report.html $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$new_tag
+      - cat /tmp/trivy-report.json
+      - cat /tmp/trivy-report.html
+      - |
+        if grep -q "CRITICAL" /tmp/trivy-report.json; then
+          echo "Critical vulnerabilities found!"
+          if [ "$FAIL_ON_CRITICAL" = "yes" ]; then
+            echo "Failing the build due to critical vulnerabilities."
+            exit 1
+          else
+            echo "Continuing the build despite the critical vulnerabilities."
+          fi
+        else
+          echo "No critical vulnerabilities found. Scan will continue."
+        fi
+       
+  post_build:
+    commands:
+      - echo "Trivy scan completed."
+      
+artifacts:
+  files: 
+    - /tmp/trivy-report.json
+    - /tmp/trivy-report.html
+  name: trivy-reports

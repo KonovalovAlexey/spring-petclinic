@@ -1,0 +1,117 @@
+version: 0.2
+env:
+  shell: bash
+  parameter-store: # it's better to use secrets manager here
+    LOGIN: "$SONAR_TOKEN"
+    RP_TOKEN: "$RP_TOKEN_NAME"
+  variables:
+    APP_LANGUAGE: 'java'
+    REPO_NAME: ''
+    PROJECT_KEY: ''
+    SONAR_URL: ''
+    ORGANIZATION: ''
+    CODEBUILD_RESOLVED_SOURCE_VERSION: ""
+    QG_TIMEOUT: '300'
+    PR_PROVIDER: ''
+    RP_ENDPOINT: ''
+    RP_PROJECT: ''
+    SONAR_USER_HOME: '${CODEBUILD_SRC_DIR}/.sonar'  # Defines the location of the analysis task cache
+    MAVEN_VERSION: '3.8.6'
+    SONAR_SCANER_VERSION: '4.4.0.2170'
+    COMMAND_ARGS: ''
+
+phases:
+  build:
+    commands:
+      - echo Skipped
+# phases:
+#   install:
+#     runtime-versions:
+#       java: corretto17
+#     commands:
+#       - |
+#          case $APP_LANGUAGE in
+#            "java")
+#            RP_LAUNCH_NAME='Java SONAR TEST'
+#            RP_LAUNCH_DOC='Java application test in Sonar.'
+#            ;;
+#            "golang")
+#            RP_LAUNCH_NAME='Goapp SONAR TEST'
+#            RP_LAUNCH_DOC='Golang application test in Sonar'
+#            ;;
+#            "python")
+#            RP_LAUNCH_NAME='Pyapp SONAR TEST'
+#            RP_LAUNCH_DOC='Python application test in Sonar'
+#            ;;
+#            *)
+#            echo -n "Incorrect value of the variable (APP_LANGUAGE) or the language is not supported!"
+#            exit 1
+#            ;;
+#          esac
+#       - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+#       - apt-get update -qq > /dev/null
+#       - apt-get install -y -qq jq 2> /dev/null
+
+#       - |
+#          if [ "${APP_LANGUAGE}" == "java" ]
+#           then
+#            curl -sO https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+#            tar xzf ./*.gz
+#            ln -s apache-maven-${MAVEN_VERSION} maven
+#            mvn -v
+#          fi
+#       - curl -sO  https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANER_VERSION}-linux.zip
+#       - unzip -qq *.zip
+#       - rm *.zip
+#       - mv ./sonar-scanner-${SONAR_SCANER_VERSION}-linux /opt
+#       - export PATH=$PATH:/opt/sonar-scanner-${SONAR_SCANER_VERSION}-linux/bin
+
+#   pre_build:
+#     commands:
+# ##===> You can add your unit tests here!
+#        - pip install reportportal-client==5.2.5
+
+#   build:
+#     commands:
+# #===> You can run your unit tests here!
+
+# ## Initializing variable parameter values for running Sonar tests.
+#       - COMMAND_ARGS="""-Dsonar.qualitygate.wait='true'
+#                         -Dsonar.qualitygate.timeout=${QG_TIMEOUT}
+#                         -Dsonar.scm.revision=${CODEBUILD_RESOLVED_SOURCE_VERSION}
+#                         -Dsonar.organization=${ORGANIZATION}
+#                         -Dsonar.projectKey=${PROJECT_KEY}
+#                         -Dsonar.login=${LOGIN}
+#                         -Dsonar.host.url=${SONAR_URL}"""
+
+#       - cd ${CODEBUILD_SRC_DIR}
+
+# ## URL correction for EPAM GitLab.
+#       - |
+#          if [ "${SONAR_URL}" == "https://sonar.epam.com" ]
+#           then
+#            SONAR_URL=${SONAR_URL}/sonarqube
+#             else
+#              SONAR_URL=${SONAR_URL}
+#          fi
+
+# ## Running Tests.
+#       - |
+#          if [ "${APP_LANGUAGE}" == "java" ]
+#           then
+#            mvn verify sonar:sonar ${COMMAND_ARGS}
+#             else
+#              sonar-scanner -X ${COMMAND_ARGS}
+#          fi
+
+# ## Get value for quality gates.
+#       - API_URL="${SONAR_URL}/api/qualitygates/project_status?projectKey=${PROJECT_KEY}"
+#       - curl -s -u "${LOGIN}:" ${API_URL} > result.json
+#       - cat result.json | json_pp
+#   post_build:
+#     commands:
+#       - python "$CODEBUILD_SRC_DIR/scripts/sonar_report.py"
+
+artifacts:
+  files:
+    - '**/*'
