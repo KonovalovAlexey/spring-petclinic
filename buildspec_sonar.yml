@@ -2,7 +2,7 @@ version: 0.2
 env:
   parameter-store: # it's better to use secrets manager here
     LOGIN: "$SONAR_TOKEN_NAME"
-    RP_TOKEN: "$RP_TOKEN_NAME"
+    RP_API_KEY: "$RP_TOKEN_NAME"
   variables:
     ART_REPO_ID: ""
     DOMAIN: ""
@@ -53,11 +53,12 @@ phases:
   post_build:
     commands:
       - |
+        if [ $RP_API_KEY != '' ]; then
         python3 -m pytest  ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py \
         -k "not quality_gate_status_check" --reportportal \
         --tb=no --rp-launch="${REPO_NAME} SONAR" \
         --rp-launch-description="${REPO_NAME} SONAR: ${SONAR_URL}/summary/new_code?id=${PROJECT_KEY}"
-
+        fi
       - python3 ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py --status-check
 
 
