@@ -18,7 +18,7 @@ env:
 phases:
  install:
    runtime-versions:
-     java: corretto21
+     java: corretto17
    commands:
      - |
         case $APP_LANGUAGE in
