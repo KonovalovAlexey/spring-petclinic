@@ -1,8 +1,8 @@
 version: 0.2
 env:
   parameter-store: # it's better to use secrets manager here
-    LOGIN: "$SONAR_TOKEN"
-#    RP_TOKEN: "$RP_TOKEN_NAME"
+    LOGIN: "$SONAR_TOKEN_NAME"
+    RP_TOKEN: "$RP_TOKEN_NAME"
   variables:
     APP_LANGUAGE: 'java'
     REPO_NAME: ''
