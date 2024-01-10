@@ -8,7 +8,7 @@ from reportportal_client import RPLogger
 # Read environment variables or set default hardcoded values
 organization = os.environ.get('ORGANIZATION', "")
 sonar_url = os.environ.get('SONAR_URL', "")
-login = os.environ.get('LOGIN', "")
+login = os.environ.get('SONAR_TOKEN', "")
 project_key = os.environ.get('PROJECT_KEY', "")
 pull_request_id = os.environ.get('PULL_NUM', None)
 

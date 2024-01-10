@@ -1,16 +1,17 @@
 version: 0.2
 env:
   parameter-store:
-    OPENAI_API_KEY: /accelerator/openai_token
-    GITHUB_TOKEN: "/${REPO_NAME}/user/token"
+    OPENAI_TOKEN: "$OPENAI_TOKEN_NAME"
+    GITHUB_TOKEN: "$GITHUB_TOKEN_NAME"
+  variables:
+    LLM_MODEL: ""
+    OPENAI_API_ENDPOINT: ""
 phases:
   install:
     commands:
       - git checkout ${SOURCE_BRANCH}
-      - pip install -r scripts/requirements.txt -qq
-      - APP_DIR="/opt/${REPO_NAME}"
-      - mkdir -p "${APP_DIR}"
-      - ln -s "${CODEBUILD_SRC_DIR}" "${APP_DIR}"
+      - pip install -r ${CODEBUILD_SRC_DIR}/scripts/ai/requirements.txt -qq
+
   build:
     commands:
       - python ${CODEBUILD_SRC_DIR}/scripts/ai/ai_cicd_analyzer.py
