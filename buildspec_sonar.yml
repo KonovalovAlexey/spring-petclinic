@@ -25,9 +25,9 @@ phases:
       - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
       - apt-get update
       - apt-get install -y jq
-      - wget https://downloads.apache.org/maven/maven-3/3.8.6/binaries/apache-maven-3.8.6-bin.tar.gz
+      - wget https://downloads.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz
       - tar xzf ./*.gz
-      - ln -s apache-maven-3.8.6 maven
+      - ln -s apache-maven-3.9.6 maven
       - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
       - unzip ./*.zip
       - export PATH=$PATH:/sonar-scanner-4.7.0.2747-linux/bin/
