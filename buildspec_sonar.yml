@@ -45,12 +45,12 @@ phases:
      - pip install -r scripts/sonar/requirements.txt -qq
 
      - |
-        if [ "${APP_LANGUAGE}" == "java" ]
-         then
-          curl -sO https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
-          tar xzf ./*.gz
-          ln -s apache-maven-${MAVEN_VERSION} maven
-          mvn -v
+        if [[ "${APP_LANGUAGE}" == "java" ]];
+          then
+            curl -sO https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+            tar xzf ./*.gz
+            ln -s apache-maven-${MAVEN_VERSION} maven
+            mvn -v
         fi
 
      - export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
@@ -72,7 +72,7 @@ phases:
 
 ## Running Tests.
      - |
-        if [ "${APP_LANGUAGE}" == "java" ]
+        if [[ "${APP_LANGUAGE}" == "java" ]];
          then
           mvn verify sonar:sonar ${COMMAND_ARGS}
          else
