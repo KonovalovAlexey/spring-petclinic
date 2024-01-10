@@ -4,6 +4,7 @@ env:
     LOGIN: "$SONAR_TOKEN_NAME"
     RP_API_KEY: "$RP_TOKEN_NAME"
   variables:
+    SONAR_URL: ""
     ART_REPO_ID: ""
     DOMAIN: ""
     REPO_NAME: ""
