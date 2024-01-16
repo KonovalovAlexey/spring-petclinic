@@ -1,7 +1,7 @@
 version: 0.2
 env:
   parameter-store: # it's better to use secrets manager here
-    LOGIN: "$SONAR_TOKEN_NAME"
+    SONAR_TOKEN: "$SONAR_TOKEN_NAME"
     RP_API_KEY: "$RP_TOKEN_NAME"
   variables:
     SONAR_URL: ""
@@ -48,19 +48,20 @@ phases:
           -Dsonar.scm.revision=${CODEBUILD_RESOLVED_SOURCE_VERSION} \
           -Dsonar.organization=${ORGANIZATION} \
           -Dsonar.projectKey="${PROJECT_KEY}" \
-          -Dsonar.login=${LOGIN} \
-          -Dsonar.host.url=${SONAR_URL} 
+          -Dsonar.login=${SONAR_TOKEN} \
+          -Dsonar.host.url=${SONAR_URL} > /dev/null
 
   post_build:
     commands:
-#      - |
-#        if [ $RP_API_KEY != '' ]; then
-#        python3 -m pytest  ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py \
-#        -k "not quality_gate_status_check" --reportportal \
-#        --tb=no --rp-launch="${REPO_NAME} SONAR" \
-#        --rp-launch-description="${REPO_NAME} SONAR: ${SONAR_URL}/summary/new_code?id=${PROJECT_KEY}"
-#        fi
-      - python3 ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py --status-check
+      - |
+        if [ $RP_API_KEY != '' ]; then
+          python3 -m pytest  ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py \
+          -k "not quality_gate_status_check" --reportportal \
+          --tb=no --rp-launch="${REPO_NAME} SONAR" \
+          --rp-launch-description="${REPO_NAME} SONAR: ${SONAR_URL}/summary/new_code?id=${PROJECT_KEY}" ;
+        else 
+          python3 ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py --status-check ;
+        fi
 
 
 
