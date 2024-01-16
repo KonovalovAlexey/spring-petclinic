@@ -8,6 +8,6 @@ files:
 
 hooks:
   ApplicationStart:
-    - location: install.sh
+    - location: ./scripts/install.sh
       timeout: 300
       runas: root

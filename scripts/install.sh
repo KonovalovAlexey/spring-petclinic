@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-apt-get install ./*.deb -y --allow-downgrades
+apt-get install /tmp/petclinic.deb -y --allow-downgrades
