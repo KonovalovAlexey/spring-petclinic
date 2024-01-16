@@ -4,7 +4,7 @@ os: linux
 
 files:
   - source: /
-    destination: /tmp
+    destination: /opt/application
 
 hooks:
   ApplicationStart:

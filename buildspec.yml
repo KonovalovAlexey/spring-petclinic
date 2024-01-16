@@ -15,14 +15,15 @@ phases:
 
   post_build:
     commands:
-        - wget -P target https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
+#        - wget -P target https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
+        - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh ./target
         - cd ./target
         - ls -la
-        - bash pack_to_deb.sh spring-petclinic-3.2.0-SNAPSHOT.jar.original 3.2.0 petclinic java
+        - bash pack_to_deb.sh spring-petclinic-3.2.0-SNAPSHOT.jar 3.2.0 petclinic java
 
 artifacts:
   files:
     - 'scripts/*'
     - '*.yml'
-    - 'petclinic.deb'
+    - 'target/*.deb'
   discard-paths: no
