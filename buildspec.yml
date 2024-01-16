@@ -17,7 +17,8 @@ phases:
     commands:
         - wget -P target https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
         - cd ./target
-        - bash pack_to_deb.sh spring-petclinic-3.2.0.jar 3.2.0 petclinic java
+        - ls -la
+        - bash pack_to_deb.sh spring-petclinic-3.2.0-SNAPSHOT.jar.original 3.2.0 petclinic java
 
 artifacts:
   files:
