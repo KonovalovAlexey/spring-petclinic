@@ -25,7 +25,7 @@ phases:
     commands:
       - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
       - apt-get update
-      - apt-get install -y jq
+      - apt-get install -y jq -q
       - wget -q https://downloads.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz
       - tar xzf ./*.gz
       - ln -s apache-maven-3.9.6 maven
@@ -49,7 +49,7 @@ phases:
           -Dsonar.organization=${ORGANIZATION} \
           -Dsonar.projectKey="${PROJECT_KEY}" \
           -Dsonar.login=${LOGIN} \
-          -Dsonar.host.url=${SONAR_URL} > /dev/null
+          -Dsonar.host.url=${SONAR_URL} 
 
   post_build:
     commands:
