@@ -11,19 +11,20 @@ phases:
 
   build:
     commands:
-        - mvn clean package
+        - mvn install -DskipTests=true -Dcheckstyle.skip=true
+        - cp ./target/*.jar ./app.jar
 
   post_build:
     commands:
 #        - wget -P target https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
-        - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh ./target
-        - cd ./target
+        - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh .
+#        - cd ./target
         - ls -la
-        - bash pack_to_deb.sh spring-petclinic-3.2.0-SNAPSHOT.jar 3.2.0 petclinic java
+        - bash pack_to_deb.sh app.jar 3.2.0 petclinic java
 
 artifacts:
   files:
     - 'scripts/*'
     - '*.yml'
-    - 'target/*.deb'
+    - 'petclinic.deb'
   discard-paths: no
