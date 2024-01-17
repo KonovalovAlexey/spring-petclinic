@@ -11,7 +11,7 @@ phases:
 
   build:
     commands:
-        - mvn install -DskipTests=true -Dcheckstyle.skip=true
+        - mvn package -DskipTests=true -Dcheckstyle.skip=true
         - cp ./target/*.jar ./app.jar
 
   post_build:
@@ -24,7 +24,7 @@ phases:
 
 artifacts:
   files:
-    - 'scripts/*'
+    - 'scripts/**/*'
     - '*.yml'
     - 'petclinic.deb'
   discard-paths: no
