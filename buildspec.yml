@@ -1,5 +1,6 @@
 version: 0.2
 env:
+  git-credential-helper: yes
   variables:
     REPO_NAME: ""
     PROJECT: ""
@@ -8,19 +9,36 @@ env:
     BUCKET: ""
 
 phases:
+  install:
+#    - wget https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
+    - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh .
 
-  build:
+  pre_build:
     commands:
         - mvn package -DskipTests=true -Dcheckstyle.skip=true
         - cp ./target/*.jar ./app.jar
 
-  post_build:
+  build:
     commands:
-#        - wget -P target https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
-        - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh .
-#        - cd ./target
-        - ls -la
-        - bash pack_to_deb.sh app.jar 3.2.0 petclinic java
+        - git describe --exact-match --tags HEAD;TAG_EXISTS=$?
+        - echo $TAG_EXISTS
+        - |
+          if [ $TAG_EXISTS -eq 0 ]; then 
+          #This condition checks the value of the TAG_EXISTS variable. If the value is 0 (meaning the tag exists)
+            echo "Tag for this commit is: ${TAG_EXISTS}"
+          else
+            latest_tag=$(git describe --tags --abbrev=0 || true);
+            echo "Latest tag: $latest_tag"
+            if [ -z "$latest_tag" ]; then
+              echo "No git tags in repository. Stop execution";
+              exit 1;
+            fi
+            if ! echo "$TAG_EXISTS" | egrep -q "^v[0-9]+\.[0-9]+\.[0-9]+$"; then
+              echo "Error: git tag $latest_tag doesn't match semver format vX.Y.Z";
+              exit 1;
+            fi
+
+        - bash pack_to_deb.sh app.jar $TAG_EXISTS petclinic java
 
 artifacts:
   files:

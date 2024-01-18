@@ -59,12 +59,7 @@ phases:
           -k "not quality_gate_status_check" --reportportal \
           --tb=no --rp-launch="${REPO_NAME} SONAR" \
           --rp-launch-description="${REPO_NAME} SONAR: ${SONAR_URL}/summary/new_code?id=${PROJECT_KEY}" ;
-        else 
-          python3 ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py --status-check ;
         fi
 
+      - python3 ${CODEBUILD_SRC_DIR}/scripts/sonar/sonar_report.py --status-check
 
-
-artifacts:
-  files:
-    - '**/*'
