@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2](https://github.com/KonovalovAlexey/spring-petclinic/compare/v0.2.1...v0.2.2) (2024-01-18)
+
+
+### Bug Fixes
+
+* **package:** Fix tag to deb package ([fcc67b8](https://github.com/KonovalovAlexey/spring-petclinic/commit/fcc67b845f2cc4f76f1be502665e9fafdd7140e1))
+
 ## [0.2.1](https://github.com/KonovalovAlexey/spring-petclinic/compare/v0.2.0...v0.2.1) (2024-01-18)
 
 
