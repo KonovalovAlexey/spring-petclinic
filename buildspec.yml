@@ -17,7 +17,7 @@ phases:
   pre_build:
     commands:
         - mvn package -DskipTests=true -Dcheckstyle.skip=true
-        - cp ./target/*.jar ./app.jar
+        - mv ./target/*.jar ./app.jar
 
   build:
     commands:
@@ -35,7 +35,7 @@ phases:
           else
             echo "No tag found"
           fi
-        - bash pack_to_deb.sh app.jar $TAG petclinic java
+        - bash pack_to_deb.sh app.jar ${TAG#v} petclinic java
 
 artifacts:
   files:
