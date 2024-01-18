@@ -10,8 +10,9 @@ env:
 
 phases:
   install:
-#    - wget https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
-    - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh .
+    commands:
+#        - wget https://raw.githubusercontent.com/epam/aws-ci-cd-accelerator/main/modules/buckets_for_accelerator/storage_bucket_files/pack_to_deb.sh
+        - aws s3 cp s3://"${BUCKET}"/pack_to_deb.sh .
 
   pre_build:
     commands:
