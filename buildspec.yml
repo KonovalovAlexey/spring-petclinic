@@ -25,21 +25,19 @@ phases:
         - echo $TAG_EXISTS
         - |
           if [ $TAG_EXISTS -eq 0 ]; then 
-          #This condition checks the value of the TAG_EXISTS variable. If the value is 0 (meaning the tag exists)
-            echo "Tag for this commit is: ${TAG_EXISTS}"
+          #This condition checks the value of the TAG_EXISTS variable.
+            echo "Tag for this commit not exist";
+            exit 1
           else
-            latest_tag=$(git describe --tags --abbrev=0 || true);
-            echo "Latest tag: $latest_tag"
-            if [ -z "$latest_tag" ]; then
-              echo "No git tags in repository. Stop execution";
-              exit 1;
-            fi
-            if ! echo "$TAG_EXISTS" | egrep -q "^v[0-9]+\.[0-9]+\.[0-9]+$"; then
-              echo "Error: git tag $latest_tag doesn't match semver format vX.Y.Z";
+            TAG=$(git describe --exact-match --tags HEAD);
+            echo "Latest tag: $TAG"
+            
+            if ! echo "$TAG" | egrep -q "^v[0-9]+\.[0-9]+\.[0-9]+$"; then
+              echo "Error: git tag $TAG doesn't match semver format vX.Y.Z";
               exit 1;
             fi
 
-        - bash pack_to_deb.sh app.jar $TAG_EXISTS petclinic java
+        - bash pack_to_deb.sh app.jar $TAG petclinic java
 
 artifacts:
   files:
