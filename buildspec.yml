@@ -36,7 +36,7 @@ phases:
               echo "Error: git tag $TAG doesn't match semver format vX.Y.Z";
               exit 1;
             fi
-
+          fi
         - bash pack_to_deb.sh app.jar $TAG petclinic java
 
 artifacts:
